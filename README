@@ -1,0 +1,10 @@
+Maestro is the name for the package containing two complimentary utilities for
+musical composition. First, a C++, Bison based parser and renderer designed to
+read .mae files and output wavs. Secondly, a Python library designed to
+facilitate the creation of mae files within a Python program.
+
+The "mae" language was designed with the following rules in mind: 1) simplicity
+over minimizing verbosity, 2) line breaks and spacing are irrelevant.
+
+The Python composition environment was designed to ease composition process by
+providing a layer of abstraction over the musical notes themselves.
