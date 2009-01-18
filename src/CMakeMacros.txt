@@ -1,0 +1,25 @@
+# The following macros were taken from the CMake development branch. See:
+# http://www.cmake.org/pipermail/cmake/2007-July/015398.html
+
+# Reuseable cmake macro for yacc.
+MACRO(YACC_FILE _filename)
+    GET_FILENAME_COMPONENT(_basename ${_filename} NAME_WE)
+    ADD_CUSTOM_COMMAND(
+        OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/${_basename}.cc
+                ${CMAKE_CURRENT_BINARY_DIR}/${_basename}.h
+        COMMAND bison -d -v
+                --output=${_basename}.cc
+                ${CMAKE_CURRENT_SOURCE_DIR}/${_filename}
+        DEPENDS ${_filename} )
+ENDMACRO(YACC_FILE)
+
+# Reuseable cmake macro for lex.
+MACRO(LEX_FILE _filename)
+    GET_FILENAME_COMPONENT(_basename ${_filename} NAME_WE)
+    ADD_CUSTOM_COMMAND(
+        OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/${_basename}.cc
+        COMMAND flex
+                -o${_basename}.cc
+                ${CMAKE_CURRENT_SOURCE_DIR}/${_filename}
+        DEPENDS ${_filename} )
+ENDMACRO(LEX_FILE)
