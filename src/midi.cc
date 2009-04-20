@@ -38,8 +38,60 @@ unsigned ReadVariableLengthValue(ifstream* file) {
 
 double NoteToFrequency(int midi_note) {
   const double kBase = 440.0;
-  const int kOffset = -57;  // May be -69 depending on "tuning".
+  const int kOffset = -57;  // May be -69 or -57 depending on the tuning.
   return kBase * std::pow(2.0, static_cast<double>(midi_note + kOffset) / 12.0);
+}
+
+enum EventType {
+  SYSEX = 0xF0,
+  META = 0xFF,
+};
+enum MetaEventType {
+  TEXT = 0x01,
+  TRACK_NAME = 0x03,
+  LYRIC = 0x05,
+  END_OF_TRACK = 0x2F,
+  TEMPO = 0x51,
+  SMPTE_OFFSET = 0x54,
+};
+enum ControllerEventType {
+  NOTE_OFF = 0x80,
+  NOTE_ON = 0x90,
+  PROGRAM_CHANGE = 0xC0,
+  CONTROLLER = 0xB0,
+  RESET	= 0xFF,
+  HOLD_PEDAL = 64,
+  ALL_SOUND_OFF = 120,
+  ALL_MIDI_CONTROLLERS_OFF = 121,
+  ALL_NOTES_OFF	= 123,
+  BANK_SELECT_MSB = 0,
+  BANK_SELECT_LSB = 32,
+};
+
+bool MIDI::InterpretRawEvent(const RawEvent& raw_event,
+                             Event* event) {
+  assert(event != NULL);
+  event->type = Event::INVALID;
+  event->time = 0.0;  // No point of reference.
+
+  if (raw_event.data[0] == RESET ||
+      (raw_event.data[0] == CONTROLLER && (raw_event.data[1] == ALL_NOTES_OFF ||
+                                           raw_event.data[1] == ALL_SOUND_OFF))) {
+    event->type = Event::RESET;
+    event->real_value = 0.0;
+    return true;
+  }
+  if (raw_event.data[0] == NOTE_ON) {
+    event->type = Event::NOTE_ON;
+    event->real_value = NoteToFrequency(raw_event.data[1]);
+    return true;
+  }
+  if (raw_event.data[0] == NOTE_OFF) {
+    event->type = Event::NOTE_OFF;
+    event->real_value = NoteToFrequency(raw_event.data[1]);
+    return true;
+  }
+  return false;  // Unhandled type.
 }
 
 // The details of the MIDI format are implemented using the description of the
@@ -58,23 +110,6 @@ bool MIDI::ReadEventMap(const string& midi_path,
   ASSERT_EQ(sizeof(uint16), 2);
   typedef unsigned int uint32;
   ASSERT_EQ(sizeof(uint32), 4);
-
-  enum EventType {
-    SYSEX = 0xF0,
-    META = 0xFF,
-  };
-  enum MetaEventType {
-    TEXT = 0x01,
-    TRACK_NAME = 0x03,
-    LYRIC = 0x05,
-    END_OF_TRACK = 0x2F,
-    TEMPO = 0x51,
-    SMPTE_OFFSET = 0x54,
-  };
-  enum ControllerEventType {
-    NOTE_OFF = 0x8,
-    NOTE_ON = 0x9,
-  };
 
   ifstream midi_file(midi_path.c_str(), ios::binary);
   if (!midi_file.is_open()) {

@@ -7,10 +7,18 @@
 
 class MIDI {
  public:
+  struct RawEvent {
+    unsigned long time;
+    size_t size;
+    unsigned char data[3];
+  };
+
   struct Event {
     double time;
 
     enum Type {
+      INVALID,
+      RESET,
       REST,
       NOTE_ON,
       NOTE_OFF,
@@ -18,9 +26,10 @@ class MIDI {
       LYRIC,
     } type;
 
-    double real_value;  // Valid for NOTE_ON, NODE_OFF, TEMPO types.
+    double real_value;  // Valid for NOTE_ON, NOTE_OFF, TEMPO types.
     std::string string_value;  // Valid for LYRIC type.
 
+    Event() {}
     explicit Event(double t) : time(t), type(REST) {}
     Event(double t, Type e, double v) : time(t), type(e), real_value(v) {}
     Event(double t, const std::string& v) : time(t), type(LYRIC), string_value(v) {}
@@ -28,6 +37,9 @@ class MIDI {
 
   typedef std::vector<Event> Track;
   typedef std::map<std::string, Track> EventMap;
+
+  static bool InterpretRawEvent(const RawEvent& raw_event,
+                                Event* event);
 
   // ReadEventMap(...) reads all NOTE_ON, NOTE_OFF, and LYRIC events from all
   // tracks from the specified midi file path. Event times are to be interpreted

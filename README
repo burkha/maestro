@@ -8,3 +8,9 @@ over minimizing verbosity, 2) line breaks and spacing are irrelevant.
 
 The Python composition environment was designed to ease composition process by
 providing a layer of abstraction over the musical notes themselves.
+
+
+FAQ:
+
+Q: Cannot start Jack, error "cannot use real-time scheduling"
+A: Run sudo su -c 'echo @audio - rtprio 99 >> /etc/security/limits.conf'
