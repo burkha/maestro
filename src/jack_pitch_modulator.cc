@@ -47,9 +47,19 @@ int process_audio(jack_nframes_t nframes, void* args) {
       (jack_default_audio_sample_t*)jack_port_get_buffer(input_port_audio, nframes);
   jack_default_audio_sample_t* output_audio =
       (jack_default_audio_sample_t*)jack_port_get_buffer(output_port_audio, nframes);
-
   FFT::FFTDecomposition fft_decomposition;
   FFT::FFTDecompose(nframes, input_audio, &fft_decomposition);
+
+  double target_frequency = 440.0;
+  if (active_notes.size() > 0) {
+    target_frequency = *active_notes.begin();
+  }
+  double dominant_frequency = 0.0;
+  if (FFT::FindDominantFrequency(fft_decomposition, 44100, &dominant_frequency)) {
+    FFT::PitchShift(44100, dominant_frequency, target_frequency, &fft_decomposition);
+    printf("%f -> %f\n", dominant_frequency, target_frequency);
+  }
+
   FFT::FFTRecompose(fft_decomposition, output_audio);
   return 0;
 }

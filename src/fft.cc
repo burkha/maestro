@@ -1,8 +1,10 @@
 #include <assert.h>
 #include <fftw3.h>
+#include <string.h>
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <limits>
 
 #include "fft.h"
 #include "util-inl.h"
@@ -93,6 +95,24 @@ bool FFT::PitchShift(size_t sample_frequency,
   assert(fft_decomposition != NULL);
   assert(fft_decomposition->sample_count > 0);
 
+  scoped_array<fftw_complex> decomposition(
+      new fftw_complex[fft_decomposition->sample_count]);
+  memcpy(decomposition.get(), fft_decomposition->fft_decomposition,
+         sizeof(fftw_complex) * fft_decomposition->sample_count);
+
+  size_t scale_count =  fft_decomposition->sample_count / 2 + 1;
+  double scale_shift =
+      std::log(target_frequency / current_frequency) / std::log(2.0);
+  for (size_t f = 0; f < scale_count - 1; ++f) {
+    int source_bin = f - scale_shift;
+    if (source_bin < 0 || source_bin >= fft_decomposition->sample_count) {
+      fft_decomposition->fft_decomposition[f][0] =
+          fft_decomposition->fft_decomposition[f][1] = 0;
+    } else {
+      fft_decomposition->fft_decomposition[f][0] = decomposition[source_bin][0];
+      fft_decomposition->fft_decomposition[f][1] = decomposition[source_bin][1];
+    }
+  }
 }
 
 bool FFT::FindDominantFrequency(const FFTDecomposition& fft_decomposition,
@@ -114,7 +134,9 @@ bool FFT::FindDominantFrequency(const FFTDecomposition& fft_decomposition,
 
   for (size_t scale = 1; scale < scale_count -1; ++scale) {
     double magnitude = Magnitude2(fft_decomposition.fft_decomposition[scale]);
-    assert(magnitude > 0);
+    if (magnitude <= numeric_limits<double>::epsilon()) {
+      continue;
+    }
     if (magnitude > max_magnitude) {
       max_magnitude = magnitude;
       max_scale = scale;
