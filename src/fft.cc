@@ -100,9 +100,8 @@ bool FFT::PitchShift(size_t sample_rate,
          sizeof(fftw_complex) * fft_decomposition->sample_count);
 
   size_t scale_count =  fft_decomposition->sample_count / 2 + 1;
-  double scale_shift =
-      (target_frequency - current_frequency) /
-      (sample_rate /  fft_decomposition->sample_count);
+  double scale_shift = ((target_frequency - current_frequency) /
+                        (sample_rate /  fft_decomposition->sample_count));
   for (size_t f = 0; f < scale_count - 1; ++f) {
     int source_bin = f - scale_shift;
     if (source_bin < 0 || source_bin >= fft_decomposition->sample_count) {
