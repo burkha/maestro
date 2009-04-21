@@ -45,9 +45,8 @@ bool FFT::FFTDecompose(size_t sample_count,
   assert(fft_decomposition != NULL);
 
   // Perform the discrete Fourier transform. Since we use the fftw library, we
-  // need to put the samples in a format it can understand. Element 0 of the
-  // result vector is the at "DC" and the n/2-th is at the Nyquist frequency.
-  // TODO: We can skip the copy if SampleType is of type double.
+  // need to put the samples in a format it can understand. TODO: We can skip
+  // the copy if SampleType is of type double.
   double* fftw_samples = (double*)fftw_malloc(sample_count * sizeof(double));
   size_t scale_count = sample_count / 2 + 1;
   fft_decomposition->fft_decomposition =
@@ -56,7 +55,7 @@ bool FFT::FFTDecompose(size_t sample_count,
       fftw_plan_dft_r2c_1d(sample_count,
                            fftw_samples,
                            fft_decomposition->fft_decomposition,
-                           FFTW_ESTIMATE);
+                           0);
   fft_decomposition->sample_count = sample_count;
   CastCopy(fftw_samples, samples, sample_count);
   fftw_execute(fftw_dft_plan);
@@ -76,7 +75,7 @@ bool FFT::FFTRecompose(const FFTDecomposition& fft_decomposition,
       fftw_plan_dft_c2r_1d(sample_count,
                            fft_decomposition.fft_decomposition,
                            fftw_samples,
-                           FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+                           FFTW_PRESERVE_INPUT);
   fftw_execute(fftw_dft_plan);
   double scale_factor = 1.0 / static_cast<double>(sample_count);
   for (size_t sample = 0; sample < sample_count; ++sample) {
@@ -87,11 +86,11 @@ bool FFT::FFTRecompose(const FFTDecomposition& fft_decomposition,
   fftw_free(fftw_samples);
 }
 
-bool FFT::PitchShift(size_t sample_frequency,
+bool FFT::PitchShift(size_t sample_rate,
                      double current_frequency,
                      double target_frequency,
                      FFTDecomposition* fft_decomposition) {
-  assert(sample_frequency > 0);
+  assert(sample_rate > 0);
   assert(fft_decomposition != NULL);
   assert(fft_decomposition->sample_count > 0);
 
@@ -102,7 +101,8 @@ bool FFT::PitchShift(size_t sample_frequency,
 
   size_t scale_count =  fft_decomposition->sample_count / 2 + 1;
   double scale_shift =
-      std::log(target_frequency / current_frequency) / std::log(2.0);
+      (target_frequency - current_frequency) /
+      (sample_rate /  fft_decomposition->sample_count);
   for (size_t f = 0; f < scale_count - 1; ++f) {
     int source_bin = f - scale_shift;
     if (source_bin < 0 || source_bin >= fft_decomposition->sample_count) {
@@ -116,10 +116,10 @@ bool FFT::PitchShift(size_t sample_frequency,
 }
 
 bool FFT::FindDominantFrequency(const FFTDecomposition& fft_decomposition,
-                                size_t sample_frequency,
+                                size_t sample_rate,
 				double* dominant_frequency) {
   assert(fft_decomposition.sample_count > 0);
-  assert(sample_frequency > 0);
+  assert(sample_rate > 0);
   assert(dominant_frequency != NULL);
 
   // Given the decomposed signal into a discrete set of frequencies, we need to
@@ -131,8 +131,7 @@ bool FFT::FindDominantFrequency(const FFTDecomposition& fft_decomposition,
   scoped_array<double> fft_magnitudes(new double[scale_count]);
   double max_magnitude = 0;
   size_t max_scale = 0;
-
-  for (size_t scale = 1; scale < scale_count -1; ++scale) {
+  for (size_t scale = 1; scale < scale_count - 1; ++scale) {
     double magnitude = Magnitude2(fft_decomposition.fft_decomposition[scale]);
     if (magnitude <= numeric_limits<double>::epsilon()) {
       continue;
@@ -151,10 +150,7 @@ bool FFT::FindDominantFrequency(const FFTDecomposition& fft_decomposition,
   double scale_offset;
   assert(PeakOfParabolicFit(fft_magnitudes.get() + max_scale - 1, &scale_offset));
   double refined_scale = max_scale + scale_offset;
-  *dominant_frequency = refined_scale *
-    1.0 / (static_cast<double>(sample_count) /
-           static_cast<double>(sample_frequency));
-
+  *dominant_frequency = refined_scale * sample_rate / sample_count;
   return true;
 }
 

@@ -55,8 +55,8 @@ int process_audio(jack_nframes_t nframes, void* args) {
     target_frequency = *active_notes.begin();
   }
   double dominant_frequency = 0.0;
-  if (FFT::FindDominantFrequency(fft_decomposition, 44100, &dominant_frequency)) {
-    FFT::PitchShift(44100, dominant_frequency, target_frequency, &fft_decomposition);
+  if (FFT::FindDominantFrequency(fft_decomposition, 48000, &dominant_frequency)) {
+    FFT::PitchShift(48000, dominant_frequency, target_frequency, &fft_decomposition);
     printf("%f -> %f\n", dominant_frequency, target_frequency);
   }
 
